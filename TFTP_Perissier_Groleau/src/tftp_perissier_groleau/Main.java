@@ -10,7 +10,7 @@ package tftp_perissier_groleau;
  *
  * @author Epulapp
  */
-public class TFTP_Perissier_Groleau {
+public class Main {
 
     /**
      * @param args the command line arguments
