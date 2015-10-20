@@ -3,7 +3,7 @@ package tftp_perissier_groleau;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -30,12 +30,17 @@ public class Client {
     private void receiveFile(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
         
         boolean isClose = false;
-        int dataLength;
+        short exBlock = 1;
+        int dataLength, Cr_rv;
+        FileOutputStream fileWriter;
         this.serveurIP = serveurIP;
         
         //Créer et envoyer le datagramPacket RRQ
         DatagramPacket dpRRQ = newRQdp((short)1, nomFichierDistant, "octet", serveurIP);
         sc.send(dpRRQ);
+        
+        //Ecriture dans le fichier de destination
+        fileWriter = new FileOutputStream(nomFichier);
         
         while (!isClose) {
             
@@ -47,12 +52,8 @@ public class Client {
                 System.out.println("Erreur n°" + dpr.getData()[2] + dpr.getData()[3] + " : " + erreurText.substring(4, dpr.getLength() - 1));
             }
             else if (dpr.getData()[1] == 3) {
-                //Suppression des quatre premiers octets
-                String data = new String(dpr.getData());
                 short block = (short) (((dpr.getData()[2] & 0xFF) << 8) | (dpr.getData()[3] & 0xFF));
-                //data = data.substring(0, dpr.getLength());
-                data = data.substring(4, dpr.getLength());
-                dataLength = dpr.getLength();
+                dataLength = dpr.getLength() - 4;
                 
                 //Création du fichier de destination
                 File fichier = new File(nomFichier);
@@ -61,44 +62,46 @@ public class Client {
                 if (fichier.exists())
                 {
                     try {
-                        //Ecriture dans le fichier de destination
-                        FileWriter fichierWrite;
-                        
                         //Si c'est le 1er block de données
-                        if (block == 1)
-                        {
-                            fichierWrite = new FileWriter(nomFichier);
-                            fichierWrite.write(data);
+                        if (block == 1 && exBlock == block) {
+                            fileWriter.write(dpr.getData(), 4, dataLength);
                             
-                            //Fermeture du fichier de destination
-                            fichierWrite.close();
+                            serveurPortAfter = dpr.getPort();
+                            
+                            DatagramPacket dpACK = newACKdp((short)4, block, serveurIP);
+                            sc.send(dpACK);
+                        }
+                        else if (block == exBlock + 1) {
+                            fileWriter.write(dpr.getData(), 4, dataLength);
+                            
+                            exBlock++;
+                            
+                            DatagramPacket dpACK = newACKdp((short)4, block, serveurIP);
+                            sc.send(dpACK);
                         }
                         else {
-                            fichierWrite = new FileWriter(nomFichier, Boolean.TRUE);
-                            fichierWrite.write(data);
+                            System.out.println("Block : " + block + " - Un problème de numéro de block a été détecté !");
                             
-                            //Fermeture du fichier de destination
-                            fichierWrite.close();
+                            DatagramPacket dpERROR = newERRORdp((short)5, (short)1, "Le numéro de block ne correspond pas à la demande !", serveurIP);
+                            sc.send(dpERROR);
                         }
                         
-                        if (dataLength < 512) {
+                        if (dpr.getLength() < 512) {
                             isClose = true;
                         }
-                        
-                        serveurPortAfter = dpr.getPort();
-                        
-                        DatagramPacket dpACK = newACKdp((short)4, block, serveurIP);
-                        sc.send(dpACK);
                     }
                     catch(IOException ex) { }
                 }
             }
         }
+        
+        //Fermeture du fichier de destination
+        fileWriter.close();
     }
     
     //Fonction de réception de datagramme
     private DatagramPacket receive() throws IOException{
-        byte[] data = new byte[512];
+        byte[] data = new byte[516];
         int length = data.length;
         DatagramPacket dc = new DatagramPacket(data, length);
         sc.receive(dc);
@@ -124,7 +127,7 @@ public class Client {
        return(new DatagramPacket(BAout.toByteArray(), BAout.size(), addr, serveurPort));
     }
     
-    //Fonction de création du datagramPacket RRQ
+    //Fonction de création du datagramPacket ACK
     private DatagramPacket newACKdp(short opcode, short block, InetAddress addr) {
         
         ByteArrayOutputStream BAout;
@@ -140,12 +143,33 @@ public class Client {
        return(new DatagramPacket(BAout.toByteArray(), BAout.size(), addr, serveurPortAfter));
     }
     
+    //Fonction de création du datagramPacket Error
+    private DatagramPacket newERRORdp(short opcode, short error, String messageError, InetAddress addr) {
+        
+        ByteArrayOutputStream BAout;
+        DataOutputStream Dout;
+        
+        //Create a byte array output stream and write to it through the data output stream methods
+        Dout = new DataOutputStream(BAout = new ByteArrayOutputStream(5 + messageError.length()));
+        try {
+            Dout.writeShort(opcode);
+            Dout.writeShort(error);
+            Dout.writeBytes(messageError);
+            Dout.writeByte(0);
+       } catch (IOException ex) { } //Should not happen with fixed byte array
+
+       return(new DatagramPacket(BAout.toByteArray(), BAout.size(), addr, serveurPortAfter));
+    }
+    
     //Fonction principale du client
     public void run() throws IOException {
         String nomFichier = "C:\\Users\\Epulapp\\Documents\\fichierDestination.txt";
         String nomFichierDistant = "fichierSource.txt";
-        
         receiveFile(nomFichier, nomFichierDistant, serveurIP);
+        
+        //String nomFichierImage = "C:\\Users\\Epulapp\\Documents\\fichierDestinationImage.png";
+        //String nomFichierDistantImage = "fichierSourceImage.png";
+        //receiveFile(nomFichierImage, nomFichierDistantImage, serveurIP);
     }
     
 }
