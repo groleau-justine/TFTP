@@ -167,7 +167,7 @@ public class Client {
     }
     
     //Fonction principale du client
-    public void run(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
+    public short run(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
         //Code erreur renvoyé par receiveFile
         short Cr_rv;
         
@@ -175,17 +175,8 @@ public class Client {
         //String nomFichierDistant = "fichierSource.txt";
         Cr_rv = receiveFile(nomFichier, nomFichierDistant, serveurIP);
         
-        switch (Cr_rv){
-            case 0:
-                System.out.println("Le transfert a bien été réalisé !");
-                break;
-            case -1:
-                System.out.println("Une erreur locale est survenue !");
-                break;
-            case 1:
-                System.out.println("Une erreur de transfert est intervenue sur le serveur !");
-                break;
-        }
+        return Cr_rv;
+        
         
         //String nomFichierImage = "C:\\Users\\Epulapp\\Documents\\fichierDestinationImage.png";
         //String nomFichierDistantImage = "fichierSourceImage.png";

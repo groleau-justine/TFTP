@@ -306,7 +306,22 @@ public class IHM extends javax.swing.JFrame {
                 // appeler mtd reception
                 Client client = new Client();
                 InetAddress serveurIP = InetAddress.getByName(this.tfIPReception.getText());
-                client.run(this.tfParcourirDossier.getText(), this.tfNomFichierRecept.getText(), serveurIP);
+                
+                Short Cr_rv = client.run(this.tfParcourirDossier.getText(), this.tfNomFichierRecept.getText(), serveurIP);
+                switch (Cr_rv){
+                    case 0:
+                        JOptionPane.showMessageDialog(this, "Le transfert a bien été réalisé !", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        System.out.println("Le transfert a bien été réalisé !");
+                        break;
+                    case -1:
+                        JOptionPane.showMessageDialog(this, "Une erreur locale est survenue !", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        System.out.println("Une erreur locale est survenue !");
+                        break;
+                    case 1:
+                        JOptionPane.showMessageDialog(this, "Une erreur de transfert est intervenue sur le serveur !", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        System.out.println("Une erreur de transfert est intervenue sur le serveur !");
+                        break;
+                }
                 
             } catch (SocketException ex) {
                 Logger.getLogger(IHM.class.getName()).log(Level.SEVERE, null, ex);
