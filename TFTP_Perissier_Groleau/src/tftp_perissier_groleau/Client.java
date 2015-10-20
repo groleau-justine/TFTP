@@ -27,11 +27,11 @@ public class Client {
     }
     
     //Fonction de réception de datagramme
-    private void receiveFile(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
+    private short receiveFile(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
         
         boolean isClose = false;
         short exBlock = 1;
-        int dataLength, Cr_rv;
+        int dataLength;
         FileOutputStream fileWriter;
         this.serveurIP = serveurIP;
         
@@ -40,7 +40,7 @@ public class Client {
         sc.send(dpRRQ);
         
         //Ecriture dans le fichier de destination
-        fileWriter = new FileOutputStream(nomFichier);
+        fileWriter = new FileOutputStream(nomFichier + '\\' + nomFichierDistant);
         
         while (!isClose) {
             
@@ -50,6 +50,7 @@ public class Client {
             if (dpr.getData()[1] == 5) {
                 String erreurText = new String (dpr.getData());
                 System.out.println("Erreur n°" + dpr.getData()[2] + dpr.getData()[3] + " : " + erreurText.substring(4, dpr.getLength() - 1));
+                return 1;
             }
             else if (dpr.getData()[1] == 3) {
                 short block = (short) (((dpr.getData()[2] & 0xFF) << 8) | (dpr.getData()[3] & 0xFF));
@@ -84,6 +85,8 @@ public class Client {
                             
                             DatagramPacket dpERROR = newERRORdp((short)5, (short)1, "Le numéro de block ne correspond pas à la demande !", serveurIP);
                             sc.send(dpERROR);
+                            
+                            return 1;
                         }
                         
                         if (dpr.getLength() < 512) {
@@ -97,6 +100,8 @@ public class Client {
         
         //Fermeture du fichier de destination
         fileWriter.close();
+        
+        return 0;
     }
     
     //Fonction de réception de datagramme
@@ -162,10 +167,25 @@ public class Client {
     }
     
     //Fonction principale du client
-    public void run() throws IOException {
-        String nomFichier = "C:\\Users\\Epulapp\\Documents\\fichierDestination.txt";
-        String nomFichierDistant = "fichierSource.txt";
-        receiveFile(nomFichier, nomFichierDistant, serveurIP);
+    public void run(String nomFichier, String nomFichierDistant, InetAddress serveurIP) throws IOException {
+        //Code erreur renvoyé par receiveFile
+        short Cr_rv;
+        
+        //String nomFichier = "C:\\Users\\Epulapp\\Documents\\fichierDestination.txt";
+        //String nomFichierDistant = "fichierSource.txt";
+        Cr_rv = receiveFile(nomFichier, nomFichierDistant, serveurIP);
+        
+        switch (Cr_rv){
+            case 0:
+                System.out.println("Le transfert a bien été réalisé !");
+                break;
+            case -1:
+                System.out.println("Une erreur locale est survenue !");
+                break;
+            case 1:
+                System.out.println("Une erreur de transfert est intervenue sur le serveur !");
+                break;
+        }
         
         //String nomFichierImage = "C:\\Users\\Epulapp\\Documents\\fichierDestinationImage.png";
         //String nomFichierDistantImage = "fichierSourceImage.png";

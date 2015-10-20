@@ -13,8 +13,9 @@ public class Main {
      * @throws java.net.SocketException
      */
     public static void main(String[] args) throws SocketException, IOException {
-        Client cli = new Client();
-        cli.run();
+        IHM ihm = new IHM();
+        ihm.setVisible(true);
+        ihm.setLocationRelativeTo(null);
     }
     
 }
