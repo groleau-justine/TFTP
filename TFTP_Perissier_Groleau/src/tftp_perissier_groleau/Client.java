@@ -42,13 +42,18 @@ public class Client {
             //Créer le datagramPacket de réception des données
             DatagramPacket dpr = receive();
             
-            if (dpr.getData()[1] == 3) {
-                //Suppresion des quatre premiers octets
+            if (dpr.getData()[1] == 5) {
+                String erreurText = new String (dpr.getData());
+                System.out.println("Erreur n°" + dpr.getData()[2] + dpr.getData()[3] + " : " + erreurText.substring(4, dpr.getLength() - 1));
+            }
+            else if (dpr.getData()[1] == 3) {
+                //Suppression des quatre premiers octets
                 String data = new String(dpr.getData());
-                short block = (short) dpr.getData()[3];
-                data = data.substring(4).trim();
-                dataLength = data.length();
-
+                short block = (short) (((dpr.getData()[2] & 0xFF) << 8) | (dpr.getData()[3] & 0xFF));
+                //data = data.substring(0, dpr.getLength());
+                data = data.substring(4, dpr.getLength());
+                dataLength = dpr.getLength();
+                
                 //Création du fichier de destination
                 File fichier = new File(nomFichier);
                 fichier.createNewFile();
@@ -57,18 +62,31 @@ public class Client {
                 {
                     try {
                         //Ecriture dans le fichier de destination
-                        FileWriter fichierWrite = new FileWriter(nomFichier);
-
-                        fichierWrite.write(data);
-
-                        //Fermeture du fichier de destination
-                        fichierWrite.close();
+                        FileWriter fichierWrite;
                         
-                        if (dataLength < 508) {
+                        //Si c'est le 1er block de données
+                        if (block == 1)
+                        {
+                            fichierWrite = new FileWriter(nomFichier);
+                            fichierWrite.write(data);
+                            
+                            //Fermeture du fichier de destination
+                            fichierWrite.close();
+                        }
+                        else {
+                            fichierWrite = new FileWriter(nomFichier, Boolean.TRUE);
+                            fichierWrite.write(data);
+                            
+                            //Fermeture du fichier de destination
+                            fichierWrite.close();
+                        }
+                        
+                        if (dataLength < 512) {
                             isClose = true;
                         }
                         
                         serveurPortAfter = dpr.getPort();
+                        
                         DatagramPacket dpACK = newACKdp((short)4, block, serveurIP);
                         sc.send(dpACK);
                     }
